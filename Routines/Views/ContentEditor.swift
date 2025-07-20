@@ -123,8 +123,8 @@ struct ContentEditor: View {
         }
         .onChange(of: contentItem.markdownContent) { _, _ in
             DispatchQueue.main.async {
-                contentItem.updatedAt = Date()
-            }
+            contentItem.updatedAt = Date()
+        }
         }
         .fullScreenCover(isPresented: $showingImageViewer) {
             ImageViewer(
@@ -352,27 +352,27 @@ struct ContentEditor: View {
                                 showingImageViewer = true
                             }) {
                                 ZStack {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 80, height: 80)
-                                        .clipped()
-                                        .cornerRadius(8)
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 80, height: 80)
+                                .clipped()
+                                .cornerRadius(8)
                                     
                                     // 删除按钮
                                     VStack {
                                         HStack {
                                             Spacer()
-                                            Button(action: {
-                                                contentItem.removeImage(at: index)
+                                    Button(action: {
+                                        contentItem.removeImage(at: index)
                                                 // 强制触发状态更新
                                                 contentItem.updatedAt = Date()
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.white)
-                                                    .background(Color.black.opacity(0.6))
-                                                    .clipShape(Circle())
-                                            }
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.white)
+                                            .background(Color.black.opacity(0.6))
+                                            .clipShape(Circle())
+                                    }
                                             .padding(4)
                                         }
                                         Spacer()
@@ -391,28 +391,28 @@ struct ContentEditor: View {
     private var previewModeView: some View {
         VStack(spacing: 16) {
             // Markdown预览 - 占据主要空间
-            ScrollView {
+        ScrollView {
                 MarkdownView(markdown: contentItem.markdownContent)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(.systemGray4), lineWidth: 1)
-            )
-            
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(.systemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+                
             // 图片预览 - 在底部显示
             if !contentItem.imageDataStrings.isEmpty {
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 12) {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 12) {
                     ForEach(Array(contentItem.images.enumerated()), id: \.offset) { index, image in
                         Button(action: {
                             selectedImageIndex = index
@@ -450,7 +450,7 @@ struct MarkdownView: View {
 
 #Preview {
     ContentEditor(contentItem: .constant(ContentItem(title: "测试标题", content: "测试内容")))
-}
+} 
 
 // MARK: - CustomTextEditor
 

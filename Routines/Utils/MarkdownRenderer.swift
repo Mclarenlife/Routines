@@ -281,42 +281,42 @@ extension MarkdownView {
         case .h1:
             return AnyView(
                 renderInlineTextInline(line.content)
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding(.vertical, 4)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
             )
         case .h2:
             return AnyView(
                 renderInlineTextInline(line.content)
-                    .font(.title)
-                    .fontWeight(.semibold)
-                    .padding(.vertical, 4)
+                .font(.title)
+                .fontWeight(.semibold)
+                .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
             )
         case .h3:
             return AnyView(
                 renderInlineTextInline(line.content)
-                    .font(.title2)
-                    .fontWeight(.medium)
-                    .padding(.vertical, 4)
+                .font(.title2)
+                .fontWeight(.medium)
+                .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
             )
         case .bullet:
             return AnyView(
-                HStack(alignment: .top, spacing: 8) {
-                    Text("•")
-                        .foregroundColor(.secondary)
+            HStack(alignment: .top, spacing: 8) {
+                Text("•")
+                    .foregroundColor(.secondary)
                     renderInlineTextInline(line.content)
-                        .font(.body)
+                    .font(.body)
                     Spacer()
-                }
+            }
             )
         case .numbered:
             return AnyView(
-                HStack(alignment: .top, spacing: 8) {
-                    Text("1.")
-                        .foregroundColor(.secondary)
+            HStack(alignment: .top, spacing: 8) {
+                Text("1.")
+                    .foregroundColor(.secondary)
                     renderInlineTextInline(line.content)
                         .font(.body)
                     Spacer()
@@ -333,8 +333,8 @@ extension MarkdownView {
             return AnyView(renderCodeBlock(line.content))
         case .inlineCode:
             return AnyView(
-                Text(line.content)
-                    .font(.system(.body, design: .monospaced))
+            Text(line.content)
+                .font(.system(.body, design: .monospaced))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(Color(.systemGray5))
@@ -349,7 +349,7 @@ extension MarkdownView {
         case .quote:
             return AnyView(
                 renderInlineTextInline(line.content)
-                    .font(.body)
+                .font(.body)
                     .foregroundColor(.secondary)
                     .padding(.leading, 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -369,13 +369,13 @@ extension MarkdownView {
         case .text:
             return AnyView(
                 renderInlineTextInline(line.content)
-                    .font(.body)
+                .font(.body)
                     .frame(maxWidth: .infinity, alignment: .leading)
             )
         case .empty:
             return AnyView(
-                Text("")
-                    .frame(height: 8)
+            Text("")
+                .frame(height: 8)
                     .frame(maxWidth: .infinity)
             )
         }

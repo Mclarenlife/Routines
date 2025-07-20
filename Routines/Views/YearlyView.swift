@@ -60,12 +60,12 @@ struct YearlyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 月份选择器
-                monthSelector
-                
+        VStack(spacing: 0) {
+            // 月份选择器
+            monthSelector
+            
                 // 内容列表 - 占据剩余空间
-                contentList
+            contentList
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             

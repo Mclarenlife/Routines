@@ -41,12 +41,12 @@ struct MonthlyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 时间段选择器
-                periodSelector
-                
+        VStack(spacing: 0) {
+            // 时间段选择器
+            periodSelector
+            
                 // 内容列表 - 占据剩余空间
-                contentList
+            contentList
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             

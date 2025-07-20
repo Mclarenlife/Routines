@@ -27,6 +27,7 @@
 		DA41E0462E2B69FD00FBCC32 /* Routines.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Routines.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA41E05C2E2B69FF00FBCC32 /* RoutinesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoutinesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA41E0662E2B69FF00FBCC32 /* RoutinesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoutinesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA41E09A2E2B794700FBCC32 /* Routines.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Routines.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -102,6 +103,11 @@
 				DA41E05C2E2B69FF00FBCC32 /* RoutinesTests.xctest */,
 				DA41E0662E2B69FF00FBCC32 /* RoutinesUITests.xctest */,
 			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DA41E09B2E2B794700FBCC32 /* Products */ = {
+			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -211,6 +217,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DA41E0472E2B69FD00FBCC32 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = DA41E09B2E2B794700FBCC32 /* Products */;
+					ProjectRef = DA41E09A2E2B794700FBCC32 /* Routines.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				DA41E0452E2B69FD00FBCC32 /* Routines */,

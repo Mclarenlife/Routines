@@ -46,13 +46,13 @@ if [ -d "Routines.xcodeproj" ]; then
         echo "请确保已安装 Xcode 并配置了命令行工具"
         exit 1
     fi
-    
-    # 尝试编译项目
-    xcodebuild -project Routines.xcodeproj -scheme Routines -destination 'platform=iOS Simulator,name=iPhone 15' build
-    
-    if [ $? -eq 0 ]; then
-        echo ""
-        echo "✅ 编译成功!"
+
+# 尝试编译项目
+xcodebuild -project Routines.xcodeproj -scheme Routines -destination 'platform=iOS Simulator,name=iPhone 15' build
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✅ 编译成功!"
     else
         echo ""
         echo "❌ 编译失败!"
@@ -67,18 +67,18 @@ fi
 
 echo ""
 echo "🎉 Routines 应用检查完成!"
-echo ""
-echo "📋 功能特性:"
-echo "   • 四个时间维度管理 (日/周/月/年)"
-echo "   • Markdown 内容编辑和预览"
-echo "   • 图片添加和管理"
-echo "   • 数据持久化存储"
-echo "   • 现代化 SwiftUI 界面"
-echo ""
-echo "🚀 下一步:"
+    echo ""
+    echo "📋 功能特性:"
+    echo "   • 四个时间维度管理 (日/周/月/年)"
+    echo "   • Markdown 内容编辑和预览"
+    echo "   • 图片添加和管理"
+    echo "   • 数据持久化存储"
+    echo "   • 现代化 SwiftUI 界面"
+    echo ""
+    echo "🚀 下一步:"
 echo "   1. 在 Xcode 中创建新的 iOS 项目"
 echo "   2. 将现有 Swift 文件添加到项目中"
 echo "   3. 选择目标设备或模拟器"
 echo "   4. 点击运行按钮开始测试"
-echo ""
+    echo ""
 echo "�� 详细文档请查看 README.md" 

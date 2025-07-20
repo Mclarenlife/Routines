@@ -45,12 +45,12 @@ struct WeeklyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 星期选择器
-                weekDaySelector
-                
+        VStack(spacing: 0) {
+            // 星期选择器
+            weekDaySelector
+            
                 // 内容列表 - 占据剩余空间
-                contentList
+            contentList
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             

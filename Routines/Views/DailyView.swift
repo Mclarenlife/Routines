@@ -33,12 +33,12 @@ struct DailyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 分类选择器
-                categorySelector
-                
+        VStack(spacing: 0) {
+            // 分类选择器
+            categorySelector
+            
                 // 内容列表 - 占据剩余空间
-                contentList
+            contentList
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             
