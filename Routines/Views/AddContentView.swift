@@ -88,6 +88,8 @@ struct ContentDetailView: View {
     @StateObject private var dataManager = DataManager.shared
     @State private var editableItem: ContentItem
     @State private var isEditing = false
+    @State private var showingImageViewer = false
+    @State private var selectedImageIndex = 0
     @Environment(\.dismiss) private var dismiss
     
     init(item: ContentItem, dimension: TimeDimension) {
@@ -111,6 +113,13 @@ struct ContentDetailView: View {
             }
             .background(Color(.systemBackground))
             .navigationBarHidden(true)
+        }
+        .fullScreenCover(isPresented: $showingImageViewer) {
+            ImageViewer(
+                images: item.images,
+                initialIndex: selectedImageIndex,
+                isPresented: $showingImageViewer
+            )
         }
     }
     
@@ -178,13 +187,19 @@ struct ContentDetailView: View {
                         GridItem(.flexible()),
                         GridItem(.flexible())
                     ], spacing: 12) {
-                        ForEach(Array(item.images.enumerated()), id: \.offset) { _, image in
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(height: 200)
-                                .clipped()
-                                .cornerRadius(12)
+                        ForEach(Array(item.images.enumerated()), id: \.offset) { index, image in
+                            Button(action: {
+                                selectedImageIndex = index
+                                showingImageViewer = true
+                            }) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 200)
+                                    .clipped()
+                                    .cornerRadius(12)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                 }
