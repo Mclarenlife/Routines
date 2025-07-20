@@ -9,6 +9,7 @@ struct ContentItem: Identifiable, Codable, Equatable {
     var createdAt: Date
     var updatedAt: Date
     var isCompleted: Bool
+    var completedAt: Date? // 新增：完成时间
     
     // 图片数据（存储为Base64字符串）
     var imageDataStrings: [String]
@@ -21,6 +22,7 @@ struct ContentItem: Identifiable, Codable, Equatable {
         self.createdAt = Date()
         self.updatedAt = Date()
         self.isCompleted = false
+        self.completedAt = nil
         self.imageDataStrings = []
     }
     
@@ -30,6 +32,29 @@ struct ContentItem: Identifiable, Codable, Equatable {
             guard let data = Data(base64Encoded: base64String),
                   let image = UIImage(data: data) else { return nil }
             return image
+        }
+    }
+    
+    // 计算属性：完成所用时间
+    var completionDuration: TimeInterval? {
+        guard isCompleted, let completedAt = completedAt else { return nil }
+        return completedAt.timeIntervalSince(createdAt)
+    }
+    
+    // 格式化完成所用时间
+    func formattedCompletionDuration() -> String? {
+        guard let duration = completionDuration else { return nil }
+        
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) % 3600 / 60
+        let seconds = Int(duration) % 60
+        
+        if hours > 0 {
+            return "\(hours)小时\(minutes)分钟"
+        } else if minutes > 0 {
+            return "\(minutes)分钟\(seconds)秒"
+        } else {
+            return "\(seconds)秒"
         }
     }
     
@@ -48,7 +73,19 @@ struct ContentItem: Identifiable, Codable, Equatable {
         updatedAt = Date()
     }
     
-
+    // 标记为完成
+    mutating func markAsCompleted() {
+        isCompleted = true
+        completedAt = Date()
+        updatedAt = Date()
+    }
+    
+    // 标记为未完成
+    mutating func markAsIncomplete() {
+        isCompleted = false
+        completedAt = nil
+        updatedAt = Date()
+    }
 }
 
 // 时间维度枚举

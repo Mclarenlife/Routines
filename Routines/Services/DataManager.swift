@@ -12,10 +12,10 @@ class DataManager: ObservableObject {
     private let fileManager = FileManager.default
     private let documentsPath: String
     
-    private var dailyDataURL: URL { documentsPath.appendingPathComponent("dailyData.json") }
-    private var weeklyDataURL: URL { documentsPath.appendingPathComponent("weeklyData.json") }
-    private var monthlyDataURL: URL { documentsPath.appendingPathComponent("monthlyData.json") }
-    private var yearlyDataURL: URL { documentsPath.appendingPathComponent("yearlyData.json") }
+    private var dailyDataURL: URL { URL(fileURLWithPath: documentsPath).appendingPathComponent("dailyData.json") }
+    private var weeklyDataURL: URL { URL(fileURLWithPath: documentsPath).appendingPathComponent("weeklyData.json") }
+    private var monthlyDataURL: URL { URL(fileURLWithPath: documentsPath).appendingPathComponent("monthlyData.json") }
+    private var yearlyDataURL: URL { URL(fileURLWithPath: documentsPath).appendingPathComponent("yearlyData.json") }
     
     private init() {
         // 获取文档目录路径

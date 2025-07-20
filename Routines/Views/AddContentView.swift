@@ -160,6 +160,14 @@ struct ContentDetailView: View {
         )
     }
     
+    // 格式化中文日期时间（精确到分钟）
+    private func formatChineseDateTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年MM月dd日 HH:mm"
+        return formatter.string(from: date)
+    }
+    
     private var detailContentView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -192,12 +200,12 @@ struct ContentDetailView: View {
                                 selectedImageIndex = index
                                 showingImageViewer = true
                             }) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(height: 200)
-                                    .clipped()
-                                    .cornerRadius(12)
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 200)
+                                .clipped()
+                                .cornerRadius(12)
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
@@ -210,7 +218,7 @@ struct ContentDetailView: View {
                         Text("创建时间:")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text(item.createdAt, style: .date)
+                        Text(formatChineseDateTime(item.createdAt))
                             .font(.caption)
                             .foregroundColor(.primary)
                     }
@@ -219,7 +227,7 @@ struct ContentDetailView: View {
                         Text("更新时间:")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text(item.updatedAt, style: .date)
+                        Text(formatChineseDateTime(item.updatedAt))
                             .font(.caption)
                             .foregroundColor(.primary)
                     }
@@ -231,6 +239,30 @@ struct ContentDetailView: View {
                         Text(item.isCompleted ? "已完成" : "未完成")
                             .font(.caption)
                             .foregroundColor(item.isCompleted ? .green : .orange)
+                    }
+                    
+                    // 新增：完成时间信息
+                    if item.isCompleted, let completedAt = item.completedAt {
+                        HStack {
+                            Text("完成时间:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(formatChineseDateTime(completedAt))
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                        
+                        if let durationText = item.formattedCompletionDuration() {
+                            HStack {
+                                Text("完成用时:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(durationText)
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                    .fontWeight(.medium)
+                            }
+                        }
                     }
                 }
                 .padding()

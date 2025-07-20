@@ -208,15 +208,15 @@ struct ContentItemCard: View {
                 }
                 
                 HStack {
-                    Text(item.updatedAt, style: .relative)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
                     Spacer()
                     
                     Button(action: {
                         var updatedItem = item
-                        updatedItem.isCompleted.toggle()
+                        if updatedItem.isCompleted {
+                            updatedItem.markAsIncomplete()
+                        } else {
+                            updatedItem.markAsCompleted()
+                        }
                         dataManager.updateContentItem(updatedItem, in: dimension)
                     }) {
                         Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
