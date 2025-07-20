@@ -3,16 +3,31 @@ import SwiftUI
 struct AddContentView: View {
     let category: Any
     let dimension: TimeDimension
+    let initialDate: Date // 新增：初始日期
     @StateObject private var dataManager = DataManager.shared
-    @State private var contentItem = ContentItem()
+    @State private var contentItem: ContentItem
+    @State private var showDatePicker = false // 新增：控制日期选择器弹窗
     @Environment(\.dismiss) private var dismiss
+    
+    init(category: Any, dimension: TimeDimension, initialDate: Date) {
+        self.category = category
+        self.dimension = dimension
+        self.initialDate = initialDate
+        let cat: DailyView.DailyCategory = (category as? DailyView.DailyCategory) ?? .todo
+        _contentItem = State(initialValue: ContentItem(date: Self.startOfDay(initialDate), category: cat))
+    }
+    
+    private static func startOfDay(_ date: Date) -> Date {
+        Calendar.current.startOfDay(for: date)
+    }
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // 标题栏
                 titleBar
-                
+                // 日期选择器
+                dateSelector // 新增：事项日期选择
                 // 内容编辑器
                 ContentEditor(contentItem: $contentItem)
             }
@@ -53,6 +68,46 @@ struct AddContentView: View {
         )
     }
     
+    private var dateSelector: some View {
+        HStack {
+            Button(action: { showDatePicker = true }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                    Text(formattedDate(contentItem.date))
+                        .font(.subheadline)
+                        .foregroundColor(.accentColor)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.systemGray6))
+                )
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
+        .sheet(isPresented: $showDatePicker) {
+            VStack {
+                DatePicker("选择事项日期", selection: $contentItem.date, displayedComponents: .date)
+                    .datePickerStyle(GraphicalDatePickerStyle())
+                    .labelsHidden()
+                    .padding()
+                Button("关闭") { showDatePicker = false }
+                    .padding(.top, 8)
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+    
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年MM月dd日 EEEE"
+        return formatter.string(from: date)
+    }
+    
     private func getCategoryTitle() -> String {
         if let dailyCategory = category as? DailyView.DailyCategory {
             return dailyCategory.rawValue
@@ -67,17 +122,12 @@ struct AddContentView: View {
     }
     
     private func saveContent() {
-        // 根据分类自动设置标题前缀
-        let categoryTitle = getCategoryTitle()
+        // 不再自动添加分类前缀，标题完全由用户输入决定
         if contentItem.title.isEmpty {
-            contentItem.title = categoryTitle
-        } else if !contentItem.title.contains(categoryTitle) {
-            contentItem.title = "\(categoryTitle) - \(contentItem.title)"
+            contentItem.title = "无标题"
         }
-        
         // 保存到数据管理器
         dataManager.addContentItem(contentItem, to: dimension)
-        
         dismiss()
     }
 }
@@ -382,5 +432,5 @@ struct ContentDetailView: View {
 }
 
 #Preview {
-    AddContentView(category: DailyView.DailyCategory.todo, dimension: .daily)
+    AddContentView(category: DailyView.DailyCategory.todo, dimension: .daily, initialDate: Date())
 } 

@@ -11,11 +11,13 @@ struct ContentItem: Identifiable, Codable, Equatable {
     var isCompleted: Bool
     var completedAt: Date? // 新增：完成时间
     var deadline: Date? // 新增：截止日期
+    var date: Date // 新增：事项归属日期
+    var category: DailyView.DailyCategory // 新增：事项分类
     
     // 图片数据（存储为Base64字符串）
     var imageDataStrings: [String]
     
-    init(title: String = "", content: String = "", markdownContent: String = "") {
+    init(title: String = "", content: String = "", markdownContent: String = "", date: Date = Date(), category: DailyView.DailyCategory = .todo) {
         self.id = UUID()
         self.title = title
         self.content = content
@@ -25,6 +27,8 @@ struct ContentItem: Identifiable, Codable, Equatable {
         self.isCompleted = false
         self.completedAt = nil
         self.deadline = nil
+        self.date = date
+        self.category = category
         self.imageDataStrings = []
     }
     
@@ -137,7 +141,9 @@ struct ContentItem: Identifiable, Codable, Equatable {
     
     // 添加图片
     mutating func addImage(_ image: UIImage) {
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else { return }
+        // 使用 DataManager 处理图片分辨率
+        let processedImage = DataManager.shared.processImage(image)
+        guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else { return }
         let base64String = imageData.base64EncodedString()
         imageDataStrings.append(base64String)
         updatedAt = Date()

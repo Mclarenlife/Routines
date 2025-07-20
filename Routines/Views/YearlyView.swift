@@ -96,7 +96,7 @@ struct YearlyView: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddContentView(category: selectedMonth, dimension: .yearly)
+            AddContentView(category: selectedMonth, dimension: .yearly, initialDate: Date())
         }
     }
     

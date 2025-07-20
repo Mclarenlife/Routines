@@ -1,5 +1,26 @@
 import Foundation
 import Combine
+import UIKit
+
+// 图片分辨率设置枚举
+enum ImageResolutionSetting: String, CaseIterable, Identifiable {
+    case original = "原图"
+    case hd1080p = "1080p"
+    case hd720p = "720p"
+    
+    var id: String { rawValue }
+    
+    var maxDimension: CGFloat? {
+        switch self {
+        case .original:
+            return nil
+        case .hd1080p:
+            return 1080
+        case .hd720p:
+            return 720
+        }
+    }
+}
 
 class DataManager: ObservableObject {
     static let shared = DataManager()
@@ -8,6 +29,7 @@ class DataManager: ObservableObject {
     @Published var weeklyData: TimeDimensionData
     @Published var monthlyData: TimeDimensionData
     @Published var yearlyData: TimeDimensionData
+    @Published var imageResolutionSetting: ImageResolutionSetting = .original
     
     private let fileManager = FileManager.default
     private let documentsPath: String
@@ -29,6 +51,9 @@ class DataManager: ObservableObject {
         
         // 加载保存的数据
         loadData()
+        
+        // 加载图片分辨率设置
+        loadImageResolutionSetting()
         
         // 检查并迁移旧数据
         migrateFromUserDefaultsIfNeeded()
@@ -131,6 +156,7 @@ class DataManager: ObservableObject {
             data.lastModified = Date()
             updateData(data)
         }
+        objectWillChange.send() // 新增：强制刷新UI
     }
     
     func deleteContentItem(_ item: ContentItem, from dimension: TimeDimension) {
@@ -207,5 +233,55 @@ class DataManager: ObservableObject {
             
             print("🎉 数据迁移完成")
         }
+    }
+    
+    // MARK: - 图片分辨率设置
+    
+    private func loadImageResolutionSetting() {
+        if let savedSetting = UserDefaults.standard.string(forKey: "imageResolutionSetting"),
+           let setting = ImageResolutionSetting(rawValue: savedSetting) {
+            imageResolutionSetting = setting
+        }
+    }
+    
+    func saveImageResolutionSetting(_ setting: ImageResolutionSetting) {
+        imageResolutionSetting = setting
+        UserDefaults.standard.set(setting.rawValue, forKey: "imageResolutionSetting")
+    }
+    
+    // MARK: - 图片处理
+    
+    func processImage(_ image: UIImage) -> UIImage {
+        guard let maxDimension = imageResolutionSetting.maxDimension else {
+            // 原图设置，不进行压缩
+            return image
+        }
+        
+        let currentSize = image.size
+        let maxCurrentDimension = max(currentSize.width, currentSize.height)
+        
+        // 如果当前图片尺寸小于等于目标尺寸，不进行压缩
+        if maxCurrentDimension <= maxDimension {
+            return image
+        }
+        
+        // 计算压缩比例
+        let scale = maxDimension / maxCurrentDimension
+        let newSize = CGSize(
+            width: currentSize.width * scale,
+            height: currentSize.height * scale
+        )
+        
+        // 压缩图片
+        return resizeImage(image, to: newSize)
+    }
+    
+    private func resizeImage(_ image: UIImage, to newSize: CGSize) -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+        defer { UIGraphicsEndImageContext() }
+        
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        
+        return UIGraphicsGetImageFromCurrentImageContext() ?? image
     }
 } 

@@ -77,7 +77,7 @@ struct MonthlyView: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddContentView(category: selectedPeriod, dimension: .monthly)
+            AddContentView(category: selectedPeriod, dimension: .monthly, initialDate: Date())
         }
     }
     

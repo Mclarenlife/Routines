@@ -147,15 +147,15 @@ struct ContentEditor: View {
             HStack(spacing: 12) {
                 // 标题工具
                 toolbarButton(title: "H1", icon: "textformat.size.larger") {
-                    applyMarkdownToSelection("# ", "")
+                    insertMarkdown("# ", "")
                 }
                 
                 toolbarButton(title: "H2", icon: "textformat.size") {
-                    applyMarkdownToSelection("## ", "")
+                    insertMarkdown("## ", "")
                 }
                 
                 toolbarButton(title: "H3", icon: "textformat.size") {
-                    applyMarkdownToSelection("### ", "")
+                    insertMarkdown("### ", "")
                 }
                 
                 Divider()
@@ -163,15 +163,15 @@ struct ContentEditor: View {
                 
                 // 文本格式工具
                 toolbarButton(title: "加粗", icon: "bold") {
-                    applyMarkdownToSelection("**", "**")
+                    insertInlineMarkdown("**", "**")
                 }
                 
                 toolbarButton(title: "斜体", icon: "italic") {
-                    applyMarkdownToSelection("*", "*")
+                    insertInlineMarkdown("*", "*")
                 }
                 
                 toolbarButton(title: "删除线", icon: "strikethrough") {
-                    applyMarkdownToSelection("~~", "~~")
+                    insertInlineMarkdown("~~", "~~")
                 }
                 
                 Divider()
@@ -179,11 +179,11 @@ struct ContentEditor: View {
                 
                 // 列表工具
                 toolbarButton(title: "无序列表", icon: "list.bullet") {
-                    applyMarkdownToSelection("- ", "")
+                    insertMarkdown("- ", "")
                 }
                 
                 toolbarButton(title: "有序列表", icon: "list.number") {
-                    applyMarkdownToSelection("1. ", "")
+                    insertMarkdown("1. ", "")
                 }
                 
                 Divider()
@@ -191,11 +191,11 @@ struct ContentEditor: View {
                 
                 // 代码工具
                 toolbarButton(title: "行内代码", icon: "chevron.left.forwardslash.chevron.right") {
-                    applyMarkdownToSelection("`", "`")
+                    insertInlineMarkdown("`", "`")
                 }
                 
                 toolbarButton(title: "代码块", icon: "doc.text") {
-                    applyMarkdownToSelection("```\n", "\n```")
+                    insertMarkdown("```\n", "\n```")
                 }
                 
                 Divider()
@@ -203,11 +203,11 @@ struct ContentEditor: View {
                 
                 // 链接和引用
                 toolbarButton(title: "链接", icon: "link") {
-                    applyMarkdownToSelection("[", "](url)")
+                    insertInlineMarkdown("[", "](url)")
                 }
                 
                 toolbarButton(title: "引用", icon: "quote.bubble") {
-                    applyMarkdownToSelection("> ", "")
+                    insertMarkdown("> ", "")
                 }
                 
                 Divider()
@@ -215,7 +215,7 @@ struct ContentEditor: View {
                 
                 // 表格和分割线
                 toolbarButton(title: "表格", icon: "tablecells") {
-                    insertTable()
+                    insertMarkdown("| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容1 | 内容2 | 内容3 |\n| 内容4 | 内容5 | 内容6 |", "")
                 }
                 
                 toolbarButton(title: "分割线", icon: "minus") {
@@ -307,11 +307,24 @@ struct ContentEditor: View {
             let newLine = currentText.hasSuffix("\n") ? "" : "\n"
             contentItem.markdownContent = currentText + newLine + prefix + suffix
         }
-        
         // 触发状态更新
         contentItem.updatedAt = Date()
+        // 修复：插入后将光标移到文本末尾，延迟到主线程下一个循环
+        DispatchQueue.main.async {
+            selectedTextRange = NSRange(location: contentItem.markdownContent.count, length: 0)
+        }
     }
     
+    // 行内工具插入（不换行）
+    private func insertInlineMarkdown(_ prefix: String, _ suffix: String) {
+        let currentText = contentItem.markdownContent
+        contentItem.markdownContent = currentText + prefix + suffix
+        contentItem.updatedAt = Date()
+        DispatchQueue.main.async {
+            selectedTextRange = NSRange(location: contentItem.markdownContent.count, length: 0)
+        }
+    }
+
     private func insertTable() {
         let tableTemplate = """
         | 列1 | 列2 | 列3 |
@@ -635,13 +648,12 @@ struct CustomTextEditor: UIViewRepresentable {
     
     func updateUIView(_ uiView: UITextView, context: Context) {
         if uiView.text != text {
-            // 保存当前的选择范围
-            let currentRange = uiView.selectedRange
             uiView.text = text
-            
-            // 恢复选择范围，但确保不超出文本范围
-            let maxLocation = max(0, min(currentRange.location, text.count))
-            let maxLength = max(0, min(currentRange.length, text.count - maxLocation))
+        }
+        // 只在 selectedRange 变化时设置
+        if uiView.selectedRange != selectedRange {
+            let maxLocation = max(0, min(selectedRange.location, text.count))
+            let maxLength = max(0, min(selectedRange.length, text.count - maxLocation))
             uiView.selectedRange = NSRange(location: maxLocation, length: maxLength)
         }
     }

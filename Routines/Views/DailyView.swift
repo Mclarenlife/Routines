@@ -6,27 +6,15 @@ struct DailyView: View {
     @State private var selectedCategory: DailyCategory = .todo
     @State private var refreshTrigger = false // 用于强制刷新视图
     @State private var filterType: FilterType = .all // 新增：筛选类型
+    @State private var selectedDate: Date = Date() // 新增：当前选中日期
+    @State private var showDatePicker: Bool = false // 新增：控制日历弹窗
     
-    enum DailyCategory: String, CaseIterable {
+    enum DailyCategory: String, CaseIterable, Identifiable, Codable {
         case todo = "待办事项"
         case routine = "每日常规"
+        case checkin = "每日打卡"
         case diary = "日记"
-        
-        var icon: String {
-            switch self {
-            case .todo: return "checklist"
-            case .routine: return "repeat"
-            case .diary: return "book"
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .todo: return .blue
-            case .routine: return .green
-            case .diary: return .orange
-            }
-        }
+        var id: String { rawValue }
     }
     
     enum FilterType: String, CaseIterable, Identifiable {
@@ -78,7 +66,7 @@ struct DailyView: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddContentView(category: selectedCategory, dimension: .daily)
+            AddContentView(category: selectedCategory, dimension: .daily, initialDate: selectedDate)
                 .onDisappear {
                     // 确保数据更新后刷新视图
                     dataManager.objectWillChange.send()
@@ -138,13 +126,56 @@ struct DailyView: View {
         .padding(.vertical, 8)
     }
     
+    private var dateBar: some View {
+        HStack {
+            Button(action: { showDatePicker = true }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                    Text(formattedDate(selectedDate))
+                        .font(.headline)
+                        .foregroundColor(.accentColor)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.systemGray6))
+                )
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 4)
+        .sheet(isPresented: $showDatePicker) {
+            VStack {
+                DatePicker("选择日期", selection: $selectedDate, displayedComponents: .date)
+                    .datePickerStyle(GraphicalDatePickerStyle())
+                    .labelsHidden()
+                    .padding()
+                Button("关闭") { showDatePicker = false }
+                    .padding(.top, 8)
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+    
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年MM月dd日 EEEE"
+        return formatter.string(from: date)
+    }
+    
     private var contentList: some View {
         VStack(spacing: 0) {
-            filterBar // 新增：筛选栏
+            if selectedCategory == .todo || selectedCategory == .routine || selectedCategory == .checkin {
+                filterBar
+            }
+            dateBar
             List {
                 let items = dataManager.dailyData.contentItems.filter { item in
-                    // 根据标题或内容判断分类
-                    (item.title.contains(selectedCategory.rawValue) || item.content.contains(selectedCategory.rawValue)) &&
+                    item.category == selectedCategory &&
+                    Calendar.current.isDate(item.date, inSameDayAs: selectedDate) &&
                     (filterType == .all || (filterType == .incomplete && !item.isCompleted) || (filterType == .complete && item.isCompleted))
                 }
                 if items.isEmpty {
@@ -166,7 +197,7 @@ struct DailyView: View {
             .listStyle(.plain)
             .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
                 let hasDeadlineItems = dataManager.dailyData.contentItems.contains { item in
-                    (item.title.contains(selectedCategory.rawValue) || item.content.contains(selectedCategory.rawValue)) &&
+                    Calendar.current.isDate(item.date, inSameDayAs: selectedDate) &&
                     item.deadline != nil && !item.isCompleted
                 }
                 if hasDeadlineItems {
@@ -264,161 +295,188 @@ struct ContentItemCard: View {
     }
     
     var body: some View {
-        Button(action: {
-            showingDetail = true
-        }) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(item.title.isEmpty ? "无标题" : item.title)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                    
-                    Spacer()
+        HStack(alignment: .center, spacing: 12) { // 增加间距到12
+            Button(action: {
+                var updatedItem = item
+                if updatedItem.isCompleted {
+                    updatedItem.markAsIncomplete()
+                } else {
+                    updatedItem.markAsCompleted()
                 }
-                
-                if !item.markdownContent.isEmpty {
-                    Text(item.markdownContent)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(3)
-                }
-                
-                if !item.imageDataStrings.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(Array(item.images.prefix(3).enumerated()), id: \.offset) { _, image in
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 60, height: 60)
-                                    .clipped()
-                                    .cornerRadius(6)
+                dataManager.updateContentItem(updatedItem, in: dimension)
+            }) {
+                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .resizable()
+                    .frame(width: 28, height: 28)
+                    .foregroundColor(item.isCompleted ? .green : .gray)
+                    .padding(.leading, 8)
+            }
+            .buttonStyle(.plain)
+            .contentShape(Circle())
+            
+            ZStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(item.title.isEmpty ? "无标题" : item.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                        Spacer()
+                    }
+                    if !item.markdownContent.isEmpty {
+                        Text(item.markdownContent)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(3)
+                    }
+                    if !item.imageDataStrings.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(item.images.prefix(3).enumerated()), id: \.offset) { _, image in
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 60, height: 60)
+                                        .clipped()
+                                        .cornerRadius(6)
+                                }
+                                if item.images.count > 3 {
+                                    Text("+\(item.images.count - 3)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 60, height: 60)
+                                        .background(Color(.systemGray5))
+                                        .cornerRadius(6)
+                                }
                             }
-                            
-                            if item.images.count > 3 {
-                                Text("+\(item.images.count - 3)")
+                        }
+                    }
+                    // 进度条显示
+                    if let deadline = item.deadline {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.isCompleted ? "完成时进度" : "期限进度")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                    .frame(width: 60, height: 60)
-                                    .background(Color(.systemGray5))
-                                    .cornerRadius(6)
-                            }
-                        }
-                    }
-                }
-                
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        var updatedItem = item
-                        if updatedItem.isCompleted {
-                            updatedItem.markAsIncomplete()
-                        } else {
-                            updatedItem.markAsCompleted()
-                        }
-                        dataManager.updateContentItem(updatedItem, in: dimension)
-                    }) {
-                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(item.isCompleted ? .green : .gray)
-                    }
-                }
-                
-                // 进度条显示
-                if let deadline = item.deadline {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(item.isCompleted ? "完成时进度" : "期限进度")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(calculateProgress() * 100))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // 进度条
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                // 背景条
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color(.systemGray5))
-                                    .frame(height: 4)
                                 
-                                // 进度条
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(progressColor)
-                                    .frame(width: geometry.size.width * calculateProgress(), height: 4)
-                                    .animation(item.isCompleted ? nil : .easeInOut(duration: 0.3), value: calculateProgress())
+                                Spacer()
+                                
+                                Text("\(Int(calculateProgress() * 100))%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                        }
-                        .frame(height: 4)
-                        
-                                                // 时间信息
-                        HStack {
-                            if item.isCompleted {
-                                if let overtime = item.formattedOvertime() {
-                                    // 超时完成：左边显示完成时间，右边显示超时时间
-                                    if let completedAt = item.completedAt {
+                            
+                            // 进度条
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    // 背景条
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(.systemGray5))
+                                        .frame(height: 4)
+                                    
+                                    // 进度条
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(progressColor)
+                                        .frame(width: geometry.size.width * calculateProgress(), height: 4)
+                                        .animation(item.isCompleted ? nil : .easeInOut(duration: 0.3), value: calculateProgress())
+                                }
+                            }
+                            .frame(height: 4)
+                            
+                                                    // 时间信息
+                            HStack {
+                                if item.isCompleted {
+                                    if let overtime = item.formattedOvertime() {
+                                        // 超时完成：左边显示完成时间，右边显示超时时间
+                                        if let completedAt = item.completedAt {
+                                            Text("完成于：\(completedAt, style: .date) \(completedAt, style: .time)")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Text(overtime)
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                    } else if let completedAt = item.completedAt {
+                                        // 按时完成
                                         Text("完成于：\(completedAt, style: .date) \(completedAt, style: .time)")
                                             .font(.caption)
                                             .foregroundColor(.green)
                                     }
-                                    
-                                    Spacer()
-                                    
-                                    Text(overtime)
+                                } else if isOverdue() {
+                                    Text("已过期")
                                         .font(.caption)
                                         .foregroundColor(.red)
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
-                                } else if let completedAt = item.completedAt {
-                                    // 按时完成
-                                    Text("完成于：\(completedAt, style: .date) \(completedAt, style: .time)")
+                                } else if let remaining = calculateRemainingTime() {
+                                    Text("剩余 \(remaining)")
                                         .font(.caption)
-                                        .foregroundColor(.green)
+                                        .foregroundColor(.orange)
                                 }
-                            } else if isOverdue() {
-                                Text("已过期")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            } else if let remaining = calculateRemainingTime() {
-                                Text("剩余 \(remaining)")
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                            }
-                            
-                            Spacer()
-                            
-                            if !item.isCompleted {
-                                Text("截止：\(deadline, style: .date) \(deadline, style: .time)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                
+                                Spacer()
+                                
+                                if !item.isCompleted {
+                                    Text("截止：\(deadline, style: .date) \(deadline, style: .time)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                }
                             }
                         }
+                        .padding(.top, 8)
                     }
-                    .padding(.top, 8)
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                )
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                showingDetail = true
+            }
+            .sheet(isPresented: $showingDetail) {
+                ContentDetailView(item: item, dimension: dimension)
+            }
+            .onReceive(Timer.publish(every: refreshInterval, on: .main, in: .common).autoconnect()) { _ in
+                // 根据任务时长动态刷新进度条
+                if item.deadline != nil && !item.isCompleted {
+                    currentTime = Date()
                 }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-            )
         }
-        .buttonStyle(PlainButtonStyle())
-        .sheet(isPresented: $showingDetail) {
-            ContentDetailView(item: item, dimension: dimension)
+    }
+}
+
+extension DailyView.DailyCategory {
+    var color: Color {
+        switch self {
+        case .todo:
+            return .blue
+        case .routine:
+            return .green
+        case .checkin:
+            return .purple
+        case .diary:
+            return .orange
         }
-        .onReceive(Timer.publish(every: refreshInterval, on: .main, in: .common).autoconnect()) { _ in
-            // 根据任务时长动态刷新进度条
-            if item.deadline != nil && !item.isCompleted {
-                currentTime = Date()
-            }
+    }
+    
+    var icon: String {
+        switch self {
+        case .todo:
+            return "checkmark.circle"
+        case .routine:
+            return "repeat.circle"
+        case .checkin:
+            return "target"
+        case .diary:
+            return "book.circle"
         }
     }
 }

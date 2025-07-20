@@ -81,7 +81,7 @@ struct WeeklyView: View {
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddContentView(category: selectedDay, dimension: .weekly)
+            AddContentView(category: selectedDay, dimension: .weekly, initialDate: Date())
         }
     }
     

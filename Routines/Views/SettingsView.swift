@@ -5,6 +5,17 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingClearDataAlert = false
     
+    private var resolutionDescription: String {
+        switch dataManager.imageResolutionSetting {
+        case .original:
+            return "保持图片原始分辨率，文件较大"
+        case .hd1080p:
+            return "图片最大尺寸为1080p，平衡质量与文件大小"
+        case .hd720p:
+            return "图片最大尺寸为720p，文件较小"
+        }
+    }
+    
     var body: some View {
         NavigationView {
             List {
@@ -59,6 +70,33 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                             .font(.caption)
                     }
+                }
+                
+                Section("图片设置") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "photo")
+                                .foregroundColor(.purple)
+                            Text("上传图片分辨率")
+                            Spacer()
+                        }
+                        
+                        Picker("图片分辨率", selection: $dataManager.imageResolutionSetting) {
+                            ForEach(ImageResolutionSetting.allCases) { setting in
+                                Text(setting.rawValue).tag(setting)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .onChange(of: dataManager.imageResolutionSetting) { _, newValue in
+                            dataManager.saveImageResolutionSetting(newValue)
+                        }
+                        
+                        Text(resolutionDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                    .padding(.vertical, 4)
                 }
                 
                 Section("关于") {
