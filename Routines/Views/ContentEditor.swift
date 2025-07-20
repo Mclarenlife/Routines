@@ -10,6 +10,8 @@ struct ContentEditor: View {
     @State private var textEditorText: String = ""
     @State private var showingImageViewer = false
     @State private var selectedImageIndex = 0
+    @State private var showingDeadlinePicker = false
+    @State private var selectedDeadline: Date = Date()
 
     
     var body: some View {
@@ -19,6 +21,9 @@ struct ContentEditor: View {
                 .font(.title2)
                 .fontWeight(.semibold)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+            
+            // 截止日期选择器
+            deadlineSelector
             
             // 按钮区域
             HStack {
@@ -145,7 +150,7 @@ struct ContentEditor: View {
                     applyMarkdownToSelection("# ", "")
                 }
                 
-                toolbarButton(title: "H2", icon: "textformat.size.large") {
+                toolbarButton(title: "H2", icon: "textformat.size") {
                     applyMarkdownToSelection("## ", "")
                 }
                 
@@ -432,6 +437,136 @@ struct ContentEditor: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    
+    // MARK: - 截止日期选择器
+    
+    private var deadlineSelector: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "clock")
+                    .foregroundColor(.accentColor)
+                
+                Text("完成期限")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                Button(action: {
+                    if contentItem.deadline != nil {
+                        // 清除截止日期
+                        contentItem.setDeadline(nil)
+                    } else {
+                        // 显示日期选择器
+                        selectedDeadline = Date()
+                        showingDeadlinePicker = true
+                    }
+                }) {
+                    Text(contentItem.deadline != nil ? "清除期限" : "设置期限")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.accentColor.opacity(0.1))
+                        )
+                }
+            }
+            
+            if let deadline = contentItem.deadline {
+                HStack {
+                    Text("截止时间：")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text(deadline, style: .date)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    
+                    Text(deadline, style: .time)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    let now = Date()
+                    if now > deadline && !contentItem.isCompleted {
+                        Text("已过期")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.red.opacity(0.1))
+                            )
+                    } else if let remaining = formattedRemainingTimeForEditor(now: now, deadline: deadline) {
+                        Text("剩余 \(remaining)")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray6))
+                )
+            }
+        }
+        .sheet(isPresented: $showingDeadlinePicker) {
+            NavigationView {
+                VStack {
+                    DatePicker(
+                        "选择截止时间",
+                        selection: $selectedDeadline,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(WheelDatePickerStyle())
+                    .labelsHidden()
+                    .padding()
+                    
+                    Spacer()
+                }
+                .navigationTitle("设置截止时间")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("取消") {
+                            showingDeadlinePicker = false
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("确定") {
+                            contentItem.setDeadline(selectedDeadline)
+                            showingDeadlinePicker = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 优化：编辑页面剩余时间显示逻辑
+    private func formattedRemainingTimeForEditor(now: Date, deadline: Date) -> String? {
+        let remaining = max(0, deadline.timeIntervalSince(now))
+        let days = Int(remaining) / 86400
+        let hours = Int(remaining) % 86400 / 3600
+        let minutes = Int(remaining) % 3600 / 60
+        if now > deadline {
+            return nil
+        } else if days > 0 {
+            return "\(days)天\(hours)小时"
+        } else if hours > 0 {
+            return "\(hours)小时\(minutes)分钟"
+        } else if minutes > 0 {
+            return "\(minutes)分钟"
+        } else {
+            return "不到1分钟"
+        }
+    }
 }
 
 // Markdown渲染视图
@@ -488,19 +623,13 @@ struct CustomTextEditor: UIViewRepresentable {
     // 静态方法用于撤销/重做
     static func undo() {
         if let textView = currentTextView {
-            print("🔄 执行撤销操作")
             textView.undoManager?.undo()
-        } else {
-            print("❌ 没有找到活跃的textView")
         }
     }
     
     static func redo() {
         if let textView = currentTextView {
-            print("🔄 执行重做操作")
             textView.undoManager?.redo()
-        } else {
-            print("❌ 没有找到活跃的textView")
         }
     }
     
@@ -532,14 +661,12 @@ struct CustomTextEditor: UIViewRepresentable {
         func textViewDidBeginEditing(_ textView: UITextView) {
             // 当开始编辑时，设置为当前活跃的textView
             CustomTextEditor.currentTextView = textView
-            print("📝 开始编辑，设置当前活跃textView")
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
             // 当结束编辑时，清除当前活跃的textView
             if CustomTextEditor.currentTextView === textView {
                 CustomTextEditor.currentTextView = nil
-                print("📝 结束编辑，清除当前活跃textView")
             }
         }
         

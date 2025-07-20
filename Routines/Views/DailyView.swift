@@ -4,6 +4,8 @@ struct DailyView: View {
     @StateObject private var dataManager = DataManager.shared
     @State private var showingAddSheet = false
     @State private var selectedCategory: DailyCategory = .todo
+    @State private var refreshTrigger = false // 用于强制刷新视图
+    @State private var filterType: FilterType = .all // 新增：筛选类型
     
     enum DailyCategory: String, CaseIterable {
         case todo = "待办事项"
@@ -25,6 +27,13 @@ struct DailyView: View {
             case .diary: return .orange
             }
         }
+    }
+    
+    enum FilterType: String, CaseIterable, Identifiable {
+        case all = "全部"
+        case incomplete = "未完成"
+        case complete = "已完成"
+        var id: String { rawValue }
     }
     
     var body: some View {
@@ -107,25 +116,63 @@ struct DailyView: View {
         .background(Color(.systemBackground))
     }
     
+    private var filterBar: some View {
+        HStack(spacing: 12) {
+            ForEach(FilterType.allCases) { type in
+                Button(action: { filterType = type }) {
+                    Text(type.rawValue)
+                        .font(.subheadline)
+                        .fontWeight(filterType == type ? .bold : .regular)
+                        .foregroundColor(filterType == type ? .white : .accentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(filterType == type ? Color.accentColor : Color(.systemGray5))
+                        )
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+    
     private var contentList: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
+        VStack(spacing: 0) {
+            filterBar // 新增：筛选栏
+            List {
                 let items = dataManager.dailyData.contentItems.filter { item in
                     // 根据标题或内容判断分类
-                    item.title.contains(selectedCategory.rawValue) || 
-                    item.content.contains(selectedCategory.rawValue)
+                    (item.title.contains(selectedCategory.rawValue) || item.content.contains(selectedCategory.rawValue)) &&
+                    (filterType == .all || (filterType == .incomplete && !item.isCompleted) || (filterType == .complete && item.isCompleted))
                 }
-                
                 if items.isEmpty {
                     emptyStateView
                 } else {
                     ForEach(items) { item in
                         ContentItemCard(item: item, dimension: .daily)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    dataManager.deleteContentItem(item, from: .daily)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                            }
+                            .listRowSeparator(.hidden)
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 80) // 为浮动按钮留出空间
+            .listStyle(.plain)
+            .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
+                let hasDeadlineItems = dataManager.dailyData.contentItems.contains { item in
+                    (item.title.contains(selectedCategory.rawValue) || item.content.contains(selectedCategory.rawValue)) &&
+                    item.deadline != nil && !item.isCompleted
+                }
+                if hasDeadlineItems {
+                    refreshTrigger.toggle()
+                }
+            }
         }
     }
     
@@ -156,6 +203,65 @@ struct ContentItemCard: View {
     let dimension: TimeDimension
     @StateObject private var dataManager = DataManager.shared
     @State private var showingDetail = false
+    @State private var currentTime = Date() // 用于实时更新
+    
+    // 计算进度条颜色
+    private var progressColor: Color {
+        if item.isCompleted {
+            // 如果超时1分钟，显示红色
+            if let overtime = item.overtimeDuration, overtime >= 60 {
+                return .red
+            }
+            return .green
+        } else if isOverdue() {
+            return .red
+        } else if item.completionProgress > 0.8 {
+            return .orange
+        } else {
+            return .blue
+        }
+    }
+    
+    // 计算实时进度（未完成时用于动画刷新）
+    private func calculateProgress() -> Double {
+        return item.completionProgress
+    }
+    
+    // 计算实时剩余时间
+    private func calculateRemainingTime() -> String? {
+        guard let deadline = item.deadline else { return nil }
+        
+        let remaining = max(0, deadline.timeIntervalSince(currentTime))
+        
+        let days = Int(remaining) / 86400
+        let hours = Int(remaining) % 86400 / 3600
+        let minutes = Int(remaining) % 3600 / 60
+        
+        if currentTime > deadline {
+            return "已过期"
+        } else if days > 0 {
+            return "\(days)天\(hours)小时"
+        } else if hours > 0 {
+            return "\(hours)小时\(minutes)分钟"
+        } else if minutes > 0 {
+            return "\(minutes)分钟"
+        } else {
+            return "不到1分钟"
+        }
+    }
+    
+    // 检查是否已过期（实时）
+    private func isOverdue() -> Bool {
+        guard let deadline = item.deadline else { return false }
+        return currentTime > deadline && !item.isCompleted
+    }
+    
+    // 计算进度条刷新频率（秒）
+    private var refreshInterval: TimeInterval {
+        guard let deadline = item.deadline else { return 10 }
+        let totalDuration = deadline.timeIntervalSince(item.createdAt)
+        return totalDuration < 300 ? 1 : 10
+    }
     
     var body: some View {
         Button(action: {
@@ -169,11 +275,6 @@ struct ContentItemCard: View {
                         .lineLimit(2)
                     
                     Spacer()
-                    
-                    if item.isCompleted {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                    }
                 }
                 
                 if !item.markdownContent.isEmpty {
@@ -223,6 +324,84 @@ struct ContentItemCard: View {
                             .foregroundColor(item.isCompleted ? .green : .gray)
                     }
                 }
+                
+                // 进度条显示
+                if let deadline = item.deadline {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(item.isCompleted ? "完成时进度" : "期限进度")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(Int(calculateProgress() * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // 进度条
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                // 背景条
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color(.systemGray5))
+                                    .frame(height: 4)
+                                
+                                // 进度条
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(progressColor)
+                                    .frame(width: geometry.size.width * calculateProgress(), height: 4)
+                                    .animation(item.isCompleted ? nil : .easeInOut(duration: 0.3), value: calculateProgress())
+                            }
+                        }
+                        .frame(height: 4)
+                        
+                                                // 时间信息
+                        HStack {
+                            if item.isCompleted {
+                                if let overtime = item.formattedOvertime() {
+                                    // 超时完成：左边显示完成时间，右边显示超时时间
+                                    if let completedAt = item.completedAt {
+                                        Text("完成于：\(completedAt, style: .date) \(completedAt, style: .time)")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text(overtime)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                } else if let completedAt = item.completedAt {
+                                    // 按时完成
+                                    Text("完成于：\(completedAt, style: .date) \(completedAt, style: .time)")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                }
+                            } else if isOverdue() {
+                                Text("已过期")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            } else if let remaining = calculateRemainingTime() {
+                                Text("剩余 \(remaining)")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Spacer()
+                            
+                            if !item.isCompleted {
+                                Text("截止：\(deadline, style: .date) \(deadline, style: .time)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
             }
             .padding()
             .background(
@@ -234,6 +413,12 @@ struct ContentItemCard: View {
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
             ContentDetailView(item: item, dimension: dimension)
+        }
+        .onReceive(Timer.publish(every: refreshInterval, on: .main, in: .common).autoconnect()) { _ in
+            // 根据任务时长动态刷新进度条
+            if item.deadline != nil && !item.isCompleted {
+                currentTime = Date()
+            }
         }
     }
 }

@@ -11,6 +11,8 @@ Routines是一个功能强大的时间管理iOS应用，帮助用户高效管理
 - **模式切换**: 编辑模式与阅读模式无缝切换
 - **多媒体支持**: 支持图片添加，自动读取系统相册
 - **智能导入**: 导入内容自动转换为Markdown格式
+- **截止日期设置**: 支持设置精确到分钟的完成期限
+- **进度跟踪**: 实时显示任务完成进度和剩余时间
 
 ### 2. 时间维度管理
 应用分为四个主要时间维度，采用轮播卡片式界面设计：
@@ -42,10 +44,11 @@ Routines是一个功能强大的时间管理iOS应用，帮助用户高效管理
 ### 核心组件
 1. **ContentView**: 主容器视图，管理四个时间维度
 2. **TimeDimensionView**: 时间维度视图基类
-3. **ContentEditor**: 通用内容编辑器组件
+3. **ContentEditor**: 通用内容编辑器组件，支持截止日期设置
 4. **MarkdownRenderer**: Markdown渲染引擎
 5. **ImagePicker**: 图片选择器组件
 6. **DataManager**: 数据管理核心类
+7. **ContentItemCard**: 内容卡片组件，显示进度条和状态
 
 ### 数据模型
 ```swift
@@ -58,6 +61,14 @@ struct ContentItem {
     var images: [UIImage]
     var createdAt: Date
     var updatedAt: Date
+    var isCompleted: Bool
+    var completedAt: Date?
+    var deadline: Date?
+    
+    // 计算属性
+    var progressPercentage: Double
+    var isOverdue: Bool
+    var remainingTime: TimeInterval?
 }
 
 // 时间维度模型
@@ -94,6 +105,15 @@ enum TimeDimension {
 2. 实现数据同步
 3. 性能优化
 4. 测试与调试
+
+### 第五阶段：高级功能
+1. 截止日期和进度跟踪 ✅
+2. 图片编辑功能（裁剪、滤镜）
+3. 图片分享功能
+4. 主题切换
+5. 搜索功能
+6. 标签系统
+7. 提醒功能
 
 ## 技术栈
 
@@ -132,4 +152,8 @@ Routines/
 
 ---
 
-*本项目采用敏捷开发方法，将持续迭代优化用户体验和功能完整性。* 
+*本项目采用敏捷开发方法，将持续迭代优化用户体验和功能完整性。*
+
+---
+
+*最后更新: 2025-07-20 17:30* 

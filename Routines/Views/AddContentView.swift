@@ -98,6 +98,23 @@ struct ContentDetailView: View {
         self._editableItem = State(initialValue: item)
     }
     
+    // 计算进度条颜色
+    private var progressColor: Color {
+        if item.isCompleted {
+            // 如果超时1分钟，显示红色
+            if let overtime = item.overtimeDuration, overtime >= 60 {
+                return .red
+            }
+            return .green
+        } else if item.isOverdue {
+            return .red
+        } else if item.completionProgress > 0.8 {
+            return .orange
+        } else {
+            return .blue
+        }
+    }
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -120,6 +137,13 @@ struct ContentDetailView: View {
                 initialIndex: selectedImageIndex,
                 isPresented: $showingImageViewer
             )
+        }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            // 每分钟更新一次进度，触发视图刷新
+            if item.deadline != nil && !item.isCompleted {
+                // 强制刷新视图以更新进度，但已完成的任务不更新
+                dataManager.objectWillChange.send()
+            }
         }
     }
     
@@ -263,6 +287,87 @@ struct ContentDetailView: View {
                                     .fontWeight(.medium)
                             }
                         }
+                    }
+                    
+                    // 新增：截止日期信息
+                    if let deadline = item.deadline {
+                        HStack {
+                            Text("截止时间:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(formatChineseDateTime(deadline))
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                        
+                        // 进度条
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.isCompleted ? "完成时进度" : "期限进度")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                let percent = Int(item.completionProgress * 100)
+                                Text("\(percent)%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            GeometryReader { geometry in
+                                let width = geometry.size.width * item.completionProgress
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(progressColor)
+                                        .frame(width: width, height: 6)
+                                        .animation(item.isCompleted ? nil : .easeInOut(duration: 0.3), value: item.completionProgress)
+                                }
+                            }
+                            .frame(height: 6)
+                            
+                            // 时间状态
+                            HStack {
+                                if item.isCompleted {
+                                    if let overtime = item.formattedOvertime() {
+                                        // 超时完成：左边显示完成时间，右边显示超时时间
+                                        if let completedAt = item.completedAt {
+                                            Text("完成于：\(formatChineseDateTime(completedAt))")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                                .fontWeight(.medium)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Text(overtime)
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                            .fontWeight(.medium)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                    } else if let completedAt = item.completedAt {
+                                        // 按时完成
+                                        Text("完成于：\(formatChineseDateTime(completedAt))")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                            .fontWeight(.medium)
+                                    }
+                                } else if item.isOverdue {
+                                    Text("已过期")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .fontWeight(.medium)
+                                } else if let remaining = item.formattedRemainingTime() {
+                                    Text("剩余 \(remaining)")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                Spacer()
+                            }
+                        }
+                        .padding(.top, 8)
                     }
                 }
                 .padding()
